@@ -47,46 +47,138 @@ $(document).ready(function() {
     $('.message-input').val(null);
     updateScrollbar();
 
-    callChatbotApi(msg)
-      .then((response) => {
-        console.log(response);
-        var data = response.data;
+  //   callChatbotApi(msg)
+  //     .then((response) => {
+  //       //console.log(response);
+  //       var data = response.data;
+  //       //console.log(data);
+  //       if (data.messages && data.messages.length > 0) {
+  //         console.log('received ' + data.messages.length + ' messages');
 
-        if (data.messages && data.messages.length > 0) {
-          console.log('received ' + data.messages.length + ' messages');
+  //         var messages = data.message;
+  //         console.log('message is' + messages);
+  //         for (var message of messages) {
+  //           if (message.type === 'unstructured') {
+  //             insertResponseMessage(message.unstructured.text);
+  //           } else if (message.type === 'structured' && message.structured.type === 'product') {
+  //             var html = '';
 
-          var messages = data.messages;
+  //             insertResponseMessage(message.structured.text);
 
-          for (var message of messages) {
-            if (message.type === 'unstructured') {
-              insertResponseMessage(message.unstructured.text);
-            } else if (message.type === 'structured' && message.structured.type === 'product') {
-              var html = '';
+  //             setTimeout(function() {
+  //               html = '<img src="' + message.structured.payload.imageUrl + '" witdth="200" height="240" class="thumbnail" /><b>' +
+  //                 message.structured.payload.name + '<br>$' +
+  //                 message.structured.payload.price +
+  //                 '</b><br><a href="#" onclick="' + message.structured.payload.clickAction + '()">' +
+  //                 message.structured.payload.buttonLabel + '</a>';
+  //               insertResponseMessage(html);
+  //             }, 1100);
+  //           } else {
+  //             console.log('not implemented');
+  //           }
+  //         }
+  //       } else {
+  //         insertResponseMessage('Oops, something went wrong. Please try again.');
+  //       }
+  //     })
+  //     .catch((error) => {
+  //       console.log('an error occurred', error);
+  //       insertResponseMessage('Oops, something went wrong. Please try again.');
+  //     });
+  // }
+  callChatbotApi(msg)
+  .then((response) => {
+    // Debugging: Log the full response received from the API
+    console.log('API response received:', response);
 
-              insertResponseMessage(message.structured.text);
+    // Extract the data from the response
+    var data = response.data;
+    console.log('Extracted data:', data);
 
-              setTimeout(function() {
-                html = '<img src="' + message.structured.payload.imageUrl + '" witdth="200" height="240" class="thumbnail" /><b>' +
-                  message.structured.payload.name + '<br>$' +
-                  message.structured.payload.price +
-                  '</b><br><a href="#" onclick="' + message.structured.payload.clickAction + '()">' +
-                  message.structured.payload.buttonLabel + '</a>';
-                insertResponseMessage(html);
-              }, 1100);
-            } else {
-              console.log('not implemented');
-            }
-          }
+    // Check if the body field exists and needs to be parsed
+    if (data.body) {
+      try {
+        // Debugging: Log the raw body before parsing
+        console.log('Raw body before parsing:', data.body);
+
+        // Parse the body if it's a JSON string
+        data = JSON.parse(data.body);
+
+        // Debugging: Log the parsed body
+        console.log('Parsed body:', data);
+      } catch (e) {
+        // Debugging: Log an error if parsing fails
+        console.error('Error parsing the body as JSON. Treating as plain text:', e);
+
+        // Insert the plain text message into the chat
+        insertResponseMessage(data.body);
+
+        // Exit since we handled the plain text case
+        return;
+      }
+    }
+
+    // Debugging: Log the final data after potential parsing
+    console.log('Final data after handling body:', data);
+    if (typeof data.message === 'string') {
+      console.log('Received message from API as it is string is:', data.message);
+      insertResponseMessage(data.message);
+    }
+
+    // Check if messages exist in the data
+    if (data.message && data.message.length > 0) {
+      console.log('Received ' + data.message.length + ' message(s) from API');
+
+      // Handle each message in the messages array
+      var messages = data.message;
+      console.log('Messages array:', message);
+
+      for (var message of messages) {
+        console.log('Processing message:', message);
+
+        if (message.type === 'unstructured') {
+          // Debugging: Log the unstructured message
+          console.log('Inserting unstructured message:', message.unstructured.text);
+
+          // Insert unstructured message (plain text)
+          insertResponseMessage(message.unstructured.text);
+
+        } else if (message.type === 'structured' && message.structured.type === 'product') {
+          // Debugging: Log the structured message
+          console.log('Inserting structured message:', message.structured);
+
+          insertResponseMessage(message.structured.text);
+
+          // Delayed insertion of structured product details
+          setTimeout(function() {
+            var html = '<img src="' + message.structured.payload.imageUrl + '" width="200" height="240" class="thumbnail" />' +
+              '<b>' + message.structured.payload.name + '<br>$' + message.structured.payload.price + '</b><br>' +
+              '<a href="#" onclick="' + message.structured.payload.clickAction + '()">' + message.structured.payload.buttonLabel + '</a>';
+
+            // Debugging: Log the constructed HTML for the structured message
+            console.log('Inserting structured HTML:', html);
+
+            insertResponseMessage(html);
+          }, 1100);
         } else {
-          insertResponseMessage('Oops, something went wrong. Please try again.');
+          // Debugging: Log message type not implemented
+          console.log('Message type not implemented. Type:', message.type);
         }
-      })
-      .catch((error) => {
-        console.log('an error occurred', error);
-        insertResponseMessage('Oops, something went wrong. Please try again.');
-      });
-  }
+      }
+    } else {
+      // Debugging: Log when no messages array is found or it's empty
+      console.warn('No messages found in API response or messages array is empty.');
+      insertResponseMessage(data);
+      //insertResponseMessage('Oops, something went wrong. Please try again.');
+    }
+  })
+  .catch((error) => {
+    // Debugging: Log any errors that occur during the API call or response handling
+    console.error('An error occurred during the API call:', error);
 
+    insertResponseMessage('Oops, something went wrong. Please try again.');
+  });
+  }
   $('.message-submit').click(function() {
     insertMessage();
   });
